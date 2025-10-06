@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PSI Data Viewer (Realtime)</title>
+  <title>Singapore PSI Realtime Data</title>
 
   <!-- 引入 D3.js -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -53,6 +53,7 @@
     }
   </style>
 </head>
+
 <body>
   <h1>Singapore PSI Realtime Data</h1>
   <div id="updateTime">Loading...</div>
@@ -73,43 +74,13 @@
   </table>
 
   <script>
+    // 异步获取 PSI 数据
     async function fetchPSIData() {
       try {
-        const response = await fetch("https://api.data.gov.sg/v1/environment/psi");
-        const data = await response.json();
+        const res = await fetch("https://api.data.gov.sg/v1/environment/psi");
+        const data = await res.json();
         const readings = data.items[0].readings;
         const updateTime = data.items[0].timestamp;
-        const regions = ["national", "central", "west", "east", "north", "south"];
 
-        // 更新时间显示
-        const timeStr = new Date(updateTime).toLocaleString("en-SG", { timeZone: "Asia/Singapore" });
-        d3.select("#updateTime").text("Last updated: " + timeStr);
-
-        // 清空旧数据
-        d3.select("#PSItable tbody").selectAll("*").remove();
-
-        // 动态生成表格
-        Object.keys(readings).forEach(metric => {
-          let row = d3.select("#PSItable tbody").append("tr");
-          row.append("td").text(metric);
-
-          regions.forEach(region => {
-            row.append("td").text(readings[metric][region]);
-          });
-        });
-
-        console.log("✅ PSI data updated at " + new Date().toLocaleTimeString());
-      } catch (error) {
-        console.error("❌ Error fetching PSI data:", error);
-        d3.select("#updateTime").text("Error loading data.");
-      }
-    }
-
-    // 首次加载
-    fetchPSIData();
-
-    // 每隔 5 分钟自动更新
-    setInterval(fetchPSIData, 300000);
-  </script>
-</body>
-</html>
+        // 显示更新时间
+        const timeStr = new Date(updateTime).toLoc
