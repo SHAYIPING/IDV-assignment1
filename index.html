@@ -1,78 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>PSI Data Viewer</title>
+  <meta charset="UTF-8" />
+  <title>PSI Data Viewer (Realtime)</title>
+
+  <!-- 引入 D3.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #121212;
+      color: #f0f0f0;
       text-align: center;
       padding: 20px;
     }
-    h1 { color: #333; }
+
+    h1 {
+      color: #ffffff;
+      margin-bottom: 5px;
+    }
+
+    #updateTime {
+      color: #aaa;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
     table {
       border-collapse: collapse;
-      margin: 20px auto;
-      width: 80%;
-      background: #fff;
+      margin: 0 auto;
+      width: 90%;
+      background-color: #1e1e1e;
+      border-radius: 6px;
+      overflow: hidden;
     }
+
     th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #333;
+      text-align: center;
     }
+
     th {
-      background-color: #0078d7;
-      color: white;
+      background-color: #222;
+      color: #80cbc4;
+      font-weight: bold;
+    }
+
+    tr:hover {
+      background-color: #2a2a2a;
     }
   </style>
 </head>
 <body>
   <h1>Singapore PSI Realtime Data</h1>
-  <table id="psiTable">
+  <div id="updateTime">Loading...</div>
+
+  <table id="PSItable">
     <thead>
       <tr>
-        <th>Reading Type</th>
+        <th>Metric</th>
+        <th>National</th>
         <th>Central</th>
         <th>West</th>
         <th>East</th>
         <th>North</th>
         <th>South</th>
-        <th>National</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <script>
-    // 调用政府的 PSI API
-    fetch("https://api.data.gov.sg/v1/environment/psi")
-      .then(response => response.json())
-      .then(data => {
-        const readings = data.items[0].readings; // 取出 readings 数据
-        const tbody = document.querySelector("#psiTable tbody");
+    async function fetchPSIData() {
+      try {
+        const response = await fetch("https://api.data.gov.sg/v1/environment/psi");
+        const data = await response.json();
+        const readings = data.items[0].readings;
+        const updateTime = data.items[0].timestamp;
+        const regions = ["national", "central", "west", "east", "north", "south"];
 
-        // 遍历 readings（12 个指标）
-        for (const key in readings) {
-          const row = document.createElement("tr");
-          const typeCell = document.createElement("td");
-          typeCell.textContent = key;
-          row.appendChild(typeCell);
+        // 更新时间显示
+        const timeStr = new Date(updateTime).toLocaleString("en-SG", { timeZone: "Asia/Singapore" });
+        d3.select("#updateTime").text("Last updated: " + timeStr);
 
-          // 每个指标里有 6 个区域数据（central, west, east, north, south, national）
-          const regionData = readings[key];
-          for (const region in regionData) {
-            const td = document.createElement("td");
-            td.textContent = regionData[region];
-            row.appendChild(td);
-          }
+        // 清空旧数据
+        d3.select("#PSItable tbody").selectAll("*").remove();
 
-          tbody.appendChild(row);
-        }
-      })
-      .catch(error => {
-        console.error("Error fetching PSI data:", error);
-      });
+        // 动态生成表格
+        Object.keys(readings).forEach(metric => {
+          let row = d3.select("#PSItable tbody").append("tr");
+          row.append("td").text(metric);
+
+          regions.forEach(region => {
+            row.append("td").text(readings[metric][region]);
+          });
+        });
+
+        console.log("✅ PSI data updated at " + new Date().toLocaleTimeString());
+      } catch (error) {
+        console.error("❌ Error fetching PSI data:", error);
+        d3.select("#updateTime").text("Error loading data.");
+      }
+    }
+
+    // 首次加载
+    fetchPSIData();
+
+    // 每隔 5 分钟自动更新
+    setInterval(fetchPSIData, 300000);
   </script>
 </body>
 </html>
