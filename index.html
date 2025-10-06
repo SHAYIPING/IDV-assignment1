@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PSI Data Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+      width: 80%;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    th {
+      background-color: #0078d7;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Singapore PSI Realtime Data</h1>
+  <table id="psiTable">
+    <thead>
+      <tr>
+        <th>Reading Type</th>
+        <th>Central</th>
+        <th>West</th>
+        <th>East</th>
+        <th>North</th>
+        <th>South</th>
+        <th>National</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // 调用政府的 PSI API
+    fetch("https://api.data.gov.sg/v1/environment/psi")
+      .then(response => response.json())
+      .then(data => {
+        const readings = data.items[0].readings; // 取出 readings 数据
+        const tbody = document.querySelector("#psiTable tbody");
+
+        // 遍历 readings（12 个指标）
+        for (const key in readings) {
+          const row = document.createElement("tr");
+          const typeCell = document.createElement("td");
+          typeCell.textContent = key;
+          row.appendChild(typeCell);
+
+          // 每个指标里有 6 个区域数据（central, west, east, north, south, national）
+          const regionData = readings[key];
+          for (const region in regionData) {
+            const td = document.createElement("td");
+            td.textContent = regionData[region];
+            row.appendChild(td);
+          }
+
+          tbody.appendChild(row);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching PSI data:", error);
+      });
+  </script>
+</body>
+</html>
