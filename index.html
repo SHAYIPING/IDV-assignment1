@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Singapore PSI Realtime Data</title>
-
-  <!-- 引入 D3.js -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
@@ -14,73 +11,133 @@
       color: #f0f0f0;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
+    h1 { margin: 10px 0 4px; }
+    #updateTime { color: #aaa; font-size: 14px; margin-bottom: 16px; min-height: 18px; }
 
-    h1 {
-      color: #ffffff;
-      margin-bottom: 5px;
-    }
-
-    #updateTime {
-      color: #aaa;
-      font-size: 14px;
-      margin-bottom: 15px;
-    }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
     table {
       border-collapse: collapse;
       margin: 0 auto;
-      width: 90%;
+      width: 100%;
       background-color: #1e1e1e;
-      border-radius: 6px;
+      border-radius: 10px;
       overflow: hidden;
     }
-
     th, td {
-      padding: 10px 12px;
+      padding: 12px 10px;
       border-bottom: 1px solid #333;
       text-align: center;
+      white-space: nowrap;
     }
-
     th {
       background-color: #222;
       color: #80cbc4;
-      font-weight: bold;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
-
-    tr:hover {
-      background-color: #2a2a2a;
-    }
+    tr:hover { background-color: #2a2a2a; }
+    .err { color:#ffb4b4; }
   </style>
 </head>
-
 <body>
-  <h1>Singapore PSI Realtime Data</h1>
-  <div id="updateTime">Loading...</div>
+  <div class="wrap">
+    <h1>Singapore PSI Realtime Data</h1>
+    <div id="updateTime">Loading...</div>
 
-  <table id="PSItable">
-    <thead>
-      <tr>
-        <th>Metric</th>
-        <th>National</th>
-        <th>Central</th>
-        <th>West</th>
-        <th>East</th>
-        <th>North</th>
-        <th>South</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <table id="PSItable">
+      <thead>
+        <tr id="thead-row">
+          <th>Metric</th>
+          <th>National</th>
+          <th>Central</th>
+          <th>West</th>
+          <th>East</th>
+          <th>North</th>
+          <th>South</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
 
-  <script>
-    // 异步获取 PSI 数据
+  <script defer>
     async function fetchPSIData() {
-      try {
-        const res = await fetch("https://api.data.gov.sg/v1/environment/psi");
-        const data = await res.json();
-        const readings = data.items[0].readings;
-        const updateTime = data.items[0].timestamp;
+      const updateEl = document.getElementById('updateTime');
+      const tbody = document.getElementById('tbody');
 
-        // 显示更新时间
-        const timeStr = new Date(updateTime).toLoc
+      try {
+        // 请求数据
+        const res = await fetch('https://api.data.gov.sg/v1/environment/psi', {
+          // 可选：有些网络对匿名 UA 不友好，带个 UA 更保险
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        }
+
+        const data = await res.json();
+
+        // 基本结构校验
+        if (!data.items || !data.items.length || !data.items[0].readings) {
+          throw new Error('API payload missing items[0].readings');
+        }
+
+        const readings = data.items[0].readings;
+        const timestamp = data.items[0].timestamp;
+
+        // 更新时间显示（新加坡时区）
+        const timeStr = new Date(timestamp).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
+        updateEl.textContent = 'Last updated: ' + timeStr;
+
+        // 清空旧内容
+        tbody.innerHTML = '';
+
+        // 固定列顺序：显示名与键名映射
+        const regions = [
+          { key: 'national', label: 'National' },
+          { key: 'central',  label: 'Central'  },
+          { key: 'west',     label: 'West'     },
+          { key: 'east',     label: 'East'     },
+          { key: 'north',    label: 'North'    },
+          { key: 'south',    label: 'South'    },
+        ];
+
+        // 逐项生成行
+        Object.keys(readings).forEach(metric => {
+          const tr = document.createElement('tr');
+
+          const tdMetric = document.createElement('td');
+          tdMetric.textContent = metric;
+          tr.appendChild(tdMetric);
+
+          regions.forEach(r => {
+            const td = document.createElement('td');
+            const val = readings[metric][r.key];
+            td.textContent = (val ?? '-');
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+
+        console.log('✅ PSI data updated at', new Date().toLocaleTimeString());
+      } catch (err) {
+        console.error('❌ Fetch PSI failed:', err);
+        document.getElementById('updateTime').innerHTML =
+          `<span class="err">Error loading data: ${err.message}</span>`;
+      }
+    }
+
+    // 首次加载
+    fetchPSIData();
+    // 每 5 分钟自动更新
+    setInterval(fetchPSIData, 300000);
+  </script>
+</body>
+</html>
